@@ -1,0 +1,51 @@
+.app { max-width: 520px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.kopf { display: flex; align-items: center; gap: 8px; }
+.kopf h1 { font-size: 1.4rem; margin: 0; flex: 1; }
+.punkt { width: 10px; height: 10px; border-radius: 50%; background: var(--leise); }
+.punkt.an { background: var(--primaer); box-shadow: 0 0 8px var(--primaer); }
+.punkt.verbinde { background: #eab308; }
+.punkt.getrennt { background: var(--gefahr); }
+.verb-text { color: var(--leise); font-size: .9rem; }
+
+.gross { width: 100%; padding: 16px; border-radius: 14px; border: 0; font-size: 1.1rem; font-weight: 600; color: #fff; }
+.gross:disabled { opacity: .6; }
+.primaer { background: var(--primaer); color: #052e16; }
+.gefahr { background: var(--flaeche); border: 2px solid var(--gefahr); color: var(--gefahr); }
+
+.zustand { background: var(--flaeche); border-radius: 20px; padding: 28px 16px; text-align: center; border: 2px solid var(--rand); transition: background .2s, border-color .2s; }
+.zustand .icon { font-size: 4rem; line-height: 1; }
+.zustand .text { font-size: 2rem; font-weight: 700; margin-top: 8px; }
+.zustand.blass { opacity: .4; }
+.z-launch, .z-fly { border-color: #eab308; }
+.z-hoere { border-color: var(--primaer); background: #14532d; animation: puls 1s infinite alternate; }
+@keyframes puls { to { background: #166534; } }
+
+.zaehler { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.kachel { background: var(--flaeche); border-radius: 14px; padding: 10px; text-align: center; border-bottom: 4px solid; }
+.kachel b { display: block; font-size: 1.8rem; }
+.kachel span { color: var(--leise); }
+.kachel.l-catch { border-color: var(--catch); } .kachel.l-hol { border-color: var(--hol); } .kachel.l-touch { border-color: var(--touch); }
+.treffer { margin: 0; text-align: center; color: var(--leise); }
+
+.liste, .alte ul { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.leer { color: var(--leise); text-align: center; padding: 20px; }
+.wurf { background: var(--flaeche); border-radius: 14px; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.zeile1 { display: flex; gap: 10px; align-items: baseline; }
+.nr { color: var(--leise); font-weight: 700; }
+.flug { color: var(--leise); font-size: .85rem; margin-left: auto; }
+.ok { color: var(--primaer); font-weight: 700; } .nok { color: var(--gefahr); font-weight: 700; }
+.zeile2 { display: flex; gap: 8px; align-items: center; min-height: 32px; }
+.gesagt { font-style: italic; }
+.play { width: 32px; height: 32px; border-radius: 50%; border: 0; background: var(--rand); color: var(--text); }
+.wahl { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.wahl button { padding: 10px 0; border-radius: 10px; background: transparent; color: var(--text); border: 2px solid var(--rand); font-weight: 600; }
+.wahl .l-catch.an { background: var(--catch); border-color: var(--catch); color: #052e16; }
+.wahl .l-hol.an { background: var(--hol); border-color: var(--hol); color: #431407; }
+.wahl .l-touch.an { background: var(--touch); border-color: var(--touch); color: #fff; }
+
+.hinweis { color: var(--leise); margin: 0; font-size: .9rem; }
+.fehler { color: var(--gefahr); margin: 0; }
+.alte h2 { font-size: 1rem; color: var(--leise); }
+.alte li { display: flex; gap: 8px; align-items: center; background: var(--flaeche); padding: 10px 12px; border-radius: 12px; }
+.alte li span { flex: 1; }
+.alte li button { background: var(--rand); color: var(--text); border: 0; padding: 6px 12px; border-radius: 8px; }
