@@ -1,7 +1,7 @@
 // Verbindung zur Frisbee per Web-Bluetooth (Chrome auf Android).
 // Fuers iPhone kommt spaeter eine andere Datei mit denselben Funktionen (Capacitor).
 const uuid = (n: number) => `a0b4000${n}-6c1e-4f2a-9d3b-5f1e2c7a9b10`
-const SERVICE = uuid(1), ZUSTAND = uuid(2), BEFEHL = uuid(3), DATEN = uuid(4), EREIGNIS = uuid(5)
+const SERVICE = uuid(1), ZUSTAND = uuid(2), BEFEHL = uuid(3), DATEN = uuid(4), EREIGNIS = uuid(5), AKKU = uuid(6)
 
 export type BoardZustand = 'ruhe' | 'launch' | 'fly' | 'landung' | 'hoere' | 'sende' | 'schlaf'
 
@@ -21,6 +21,7 @@ export interface Rueckrufe {
   ereignis: (e: BoardEreignis) => void          // sofort nach der Landung
   wurfKomplett: (w: WurfDaten) => void          // wenn Messdaten + Ton da sind
   getrennt: () => void
+  akku: (mv: number) => void                     // Akkuspannung in mV
 }
 
 const text = (v: DataView) => new TextDecoder().decode(v.buffer.slice(v.byteOffset, v.byteOffset + v.byteLength))
@@ -56,6 +57,12 @@ export class Frisbee {
     d.addEventListener('characteristicvaluechanged', () => this.beiDaten(d.value!))
     await z.startNotifications(); await e.startNotifications(); await d.startNotifications()
     this.r.zustand(text(await z.readValue()) as BoardZustand)
+    try {   // aeltere Board-Versionen haben keinen Akku-Wert
+      const a = await svc.getCharacteristic(AKKU)
+      a.addEventListener('characteristicvaluechanged', () => this.r.akku(Number(text(a.value!))))
+      await a.startNotifications()
+      this.r.akku(Number(text(await a.readValue())))
+    } catch { /* egal */ }
   }
 
   trennen() { this.geraet?.gatt?.disconnect() }

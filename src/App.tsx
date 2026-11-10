@@ -20,6 +20,17 @@ type WhisperStatus = { typ: 'aus' } | { typ: 'laedt'; prozent: number } | { typ:
 
 const neueId = () => crypto.randomUUID()
 
+// Ungefaehre Ladung eines LiPo-Akkus aus der Spannung (ohne Last)
+function akkuProzent(mv: number): number {
+  const kurve: [number, number][] = [[3300, 0], [3500, 5], [3650, 20], [3750, 40], [3850, 60], [4000, 80], [4150, 100]]
+  if (mv <= kurve[0][0]) return 0
+  for (let i = 1; i < kurve.length; i++) {
+    const [v1, p1] = kurve[i - 1], [v2, p2] = kurve[i]
+    if (mv <= v2) return Math.round(p1 + ((mv - v1) / (v2 - v1)) * (p2 - p1))
+  }
+  return 100
+}
+
 export default function App() {
   const [verbindung, setVerbindung] = useState<Verbindung>('aus')
   const [fehler, setFehler] = useState('')
@@ -28,6 +39,7 @@ export default function App() {
   const [wuerfe, setWuerfe] = useState<Wurf[]>([])
   const [alte, setAlte] = useState<Session[]>([])
   const [whisper, setWhisper] = useState<WhisperStatus>({ typ: 'aus' })
+  const [akkuMv, setAkkuMv] = useState<number | null>(null)
 
   // Refs, weil die Bluetooth-Rueckrufe nur einmal angelegt werden
   const sessionRef = useRef<Session | null>(null)
@@ -118,6 +130,7 @@ export default function App() {
           ereignis: beiEreignis,
           wurfKomplett: beiWurfKomplett,
           getrennt: () => { setVerbindung('getrennt'); wiederVerbinden() },
+          akku: setAkkuMv,
         })
         await frisbee.current.verbinden()
       } else {
@@ -196,6 +209,11 @@ export default function App() {
     <div className="app">
       <header className="kopf">
         <h1>🥏 Frisbee</h1>
+        {akkuMv !== null && akkuMv > 2500 && verbindung === 'an' && (
+          <span className={`akku ${akkuProzent(akkuMv) <= 20 ? 'leer' : ''}`} title={`${(akkuMv / 1000).toFixed(2)} V`}>
+            🔋 {akkuProzent(akkuMv)} %
+          </span>
+        )}
         <span className={`punkt ${verbindung}`} />
         <span className="verb-text">
           {verbindung === 'an' ? 'verbunden' : verbindung === 'verbinde' ? 'verbinde …' : verbindung === 'getrennt' ? 'getrennt' : 'nicht verbunden'}

@@ -50,3 +50,5 @@
 .alte li span { flex: 1; }
 .alte li button { background: var(--rand); color: var(--text); border: 0; padding: 6px 12px; border-radius: 8px; }
 .z-schlaf { opacity: .6; }
+.akku { font-size: .9rem; color: var(--leise); margin-right: 6px; }
+.akku.leer { color: var(--gefahr); font-weight: 700; }
