@@ -3,7 +3,7 @@
 const uuid = (n: number) => `a0b4000${n}-6c1e-4f2a-9d3b-5f1e2c7a9b10`
 const SERVICE = uuid(1), ZUSTAND = uuid(2), BEFEHL = uuid(3), DATEN = uuid(4), EREIGNIS = uuid(5)
 
-export type BoardZustand = 'ruhe' | 'launch' | 'fly' | 'landung' | 'hoere' | 'sende'
+export type BoardZustand = 'ruhe' | 'launch' | 'fly' | 'landung' | 'hoere' | 'sende' | 'schlaf'
 
 export interface BoardEreignis {
   n: number; board: 'catch' | 'hol' | 'touch'; flug: number; stoesse: number; unruhe: number
@@ -62,6 +62,11 @@ export class Frisbee {
 
   async sessionStarten() {
     await this.befehl?.writeValue(new TextEncoder().encode('start'))
+  }
+
+  // Board in den Tiefschlaf schicken (aufwecken durch Schuetteln)
+  async ausschalten() {
+    await this.befehl?.writeValue(new TextEncoder().encode('aus'))
   }
 
   private beiEreignis(json: string) {

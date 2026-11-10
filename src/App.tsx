@@ -12,6 +12,7 @@ const ZUSTAND_ANZEIGE: Record<BoardZustand, { text: string; icon: string }> = {
   landung: { text: 'Landung …', icon: '⬇️' },
   hoere: { text: 'Sprich jetzt!', icon: '🎤' },
   sende: { text: 'Empfange Ton …', icon: '📡' },
+  schlaf: { text: 'Schläft – schütteln zum Aufwecken', icon: '😴' },
 }
 
 type Verbindung = 'aus' | 'verbinde' | 'an' | 'getrennt'
@@ -34,6 +35,7 @@ export default function App() {
   const frisbee = useRef<Frisbee | null>(null)
   const worker = useRef<Worker | null>(null)
   const wakeLock = useRef<WakeLockSentinel | null>(null)
+  const autoVerbinden = useRef(false)   // nach Trennung selbst neu verbinden
 
   const aendere = (id: string, patch: Partial<Wurf>) => {
     wuerfeRef.current = wuerfeRef.current.map(w => (w.id === id ? { ...w, ...patch } : w))
@@ -115,18 +117,41 @@ export default function App() {
           zustand: setZustand,
           ereignis: beiEreignis,
           wurfKomplett: beiWurfKomplett,
-          getrennt: () => setVerbindung('getrennt'),
+          getrennt: () => { setVerbindung('getrennt'); wiederVerbinden() },
         })
         await frisbee.current.verbinden()
       } else {
         await frisbee.current.neuVerbinden()
       }
       setVerbindung('an')
+      autoVerbinden.current = true
       whisperLaden()
     } catch (err) {
       setVerbindung(frisbee.current ? 'getrennt' : 'aus')
       if (!String(err).includes('cancelled')) setFehler(String(err))
     }
+  }
+
+  // Nach einer Trennung (z. B. Schlaf, zu weit weg) alle 3 s neu versuchen
+  const wiederVerbinden = () => {
+    if (!autoVerbinden.current) return
+    setTimeout(async () => {
+      if (!autoVerbinden.current || !frisbee.current) return
+      try {
+        setVerbindung('verbinde')
+        await frisbee.current.neuVerbinden()
+        setVerbindung('an')
+      } catch {
+        setVerbindung('getrennt')
+        wiederVerbinden()
+      }
+    }, 3000)
+  }
+
+  const ausschalten = async () => {
+    if (!confirm('Frisbee schlafen legen? Aufwecken durch Schütteln.')) return
+    await frisbee.current?.ausschalten().catch(() => {})
+    setZustand('schlaf')
   }
 
   // ---------- Session ----------
@@ -178,7 +203,7 @@ export default function App() {
       </header>
 
       {verbindung !== 'an' && (
-        <button className="gross primaer" onClick={verbinden} disabled={verbindung === 'verbinde'}>
+        <button className="gross primaer" onClick={() => { autoVerbinden.current = false; void verbinden() }} disabled={verbindung === 'verbinde'}>
           {verbindung === 'getrennt' ? 'Neu verbinden' : 'Mit Frisbee verbinden'}
         </button>
       )}
@@ -210,6 +235,9 @@ export default function App() {
       ) : (
         <>
           <button className="gross primaer" onClick={sessionStarten}>Session starten</button>
+          {verbindung === 'an' && (
+            <button className="gross gefahr" onClick={ausschalten}>Frisbee ausschalten</button>
+          )}
           {alte.length > 0 && (
             <section className="alte">
               <h2>Frühere Sessions</h2>

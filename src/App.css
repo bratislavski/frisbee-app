@@ -49,3 +49,4 @@
 .alte li { display: flex; gap: 8px; align-items: center; background: var(--flaeche); padding: 10px 12px; border-radius: 12px; }
 .alte li span { flex: 1; }
 .alte li button { background: var(--rand); color: var(--text); border: 0; padding: 6px 12px; border-radius: 8px; }
+.z-schlaf { opacity: .6; }
