@@ -17,13 +17,19 @@ export interface Wurf {
   luecken: number
 }
 
+// Akku-Protokoll: jeder Messwert (alle 10 s, solange verbunden) und Verbindungs-Ereignisse
+export interface AkkuEintrag { zeit: number; typ: 'mv' | 'verbunden' | 'getrennt' | 'schlaf'; mv?: number }
+
 export interface Sensordaten { wurfId: string; imu: Int16Array | null; audio: Blob | null }
 
-const db = openDB('frisbee', 1, {
-  upgrade(d) {
-    d.createObjectStore('sessions', { keyPath: 'id' })
-    d.createObjectStore('wuerfe', { keyPath: 'id' }).createIndex('session', 'sessionId')
-    d.createObjectStore('sensordaten', { keyPath: 'wurfId' })
+const db = openDB('frisbee', 2, {
+  upgrade(d, alt) {
+    if (alt < 1) {
+      d.createObjectStore('sessions', { keyPath: 'id' })
+      d.createObjectStore('wuerfe', { keyPath: 'id' }).createIndex('session', 'sessionId')
+      d.createObjectStore('sensordaten', { keyPath: 'wurfId' })
+    }
+    if (alt < 2) d.createObjectStore('akku', { autoIncrement: true })
   },
 })
 
@@ -36,6 +42,9 @@ export const speicher = {
   async wurf(w: Wurf) { await (await db).put('wuerfe', w) },
   async sensordaten(s: Sensordaten) { await (await db).put('sensordaten', s) },
   async holeSensordaten(id: string): Promise<Sensordaten | undefined> { return (await db).get('sensordaten', id) },
+  async akku(e: AkkuEintrag) { await (await db).add('akku', e) },
+  async akkuLog(): Promise<AkkuEintrag[]> { return (await db).getAll('akku') },
+  async akkuLoeschen() { await (await db).clear('akku') },
   async loescheSession(id: string) {
     const d = await db
     for (const w of await this.wuerfe(id)) { await d.delete('wuerfe', w.id); await d.delete('sensordaten', w.id) }
@@ -50,6 +59,22 @@ async function base64(b: Blob) {
   return btoa(s)
 }
 
+function herunterladen(daten: unknown, name: string) {
+  const blob = new Blob([JSON.stringify(daten)], { type: 'application/json' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = name
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
+
+const zeitName = (ms: number) => new Date(ms).toISOString().slice(0, 16).replace(/[:T]/g, '-')
+
+export async function akkuExportieren() {
+  const log = await speicher.akkuLog()
+  herunterladen({ akku: log }, `frisbee-akku-${zeitName(log[0]?.zeit ?? Date.now())}.json`)
+}
+
 // Eine Session als JSON-Datei herunterladen (fuer Auswertung am PC)
 export async function exportieren(s: Session) {
   const wuerfe = await speicher.wuerfe(s.id)
@@ -57,10 +82,5 @@ export async function exportieren(s: Session) {
     const d = await speicher.holeSensordaten(w.id)
     return { ...w, imu: d?.imu ? Array.from(d.imu) : null, audioWavBase64: d?.audio ? await base64(d.audio) : null }
   }))
-  const blob = new Blob([JSON.stringify({ session: s, wuerfe: mitDaten })], { type: 'application/json' })
-  const a = document.createElement('a')
-  a.href = URL.createObjectURL(blob)
-  a.download = `frisbee-session-${new Date(s.start).toISOString().slice(0, 16).replace(/[:T]/g, '-')}.json`
-  a.click()
-  URL.revokeObjectURL(a.href)
+  herunterladen({ session: s, wuerfe: mitDaten }, `frisbee-session-${zeitName(s.start)}.json`)
 }

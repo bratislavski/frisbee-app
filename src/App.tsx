@@ -3,7 +3,7 @@ import './App.css'
 import { Frisbee, type BoardEreignis, type BoardZustand, type WurfDaten } from './ble'
 import { alsWav, fuerWhisper } from './audio'
 import { LABELS, zuordnen, type Label } from './erkennung'
-import { exportieren, speicher, type Session, type Wurf } from './speicher'
+import { akkuExportieren, exportieren, speicher, type AkkuEintrag, type Session, type Wurf } from './speicher'
 
 const ZUSTAND_ANZEIGE: Record<BoardZustand, { text: string; icon: string }> = {
   ruhe: { text: 'Bereit', icon: '🥏' },
@@ -40,6 +40,7 @@ export default function App() {
   const [alte, setAlte] = useState<Session[]>([])
   const [whisper, setWhisper] = useState<WhisperStatus>({ typ: 'aus' })
   const [akkuMv, setAkkuMv] = useState<number | null>(null)
+  const [akkuLog, setAkkuLog] = useState<{ n: number; seit: number | null }>({ n: 0, seit: null })
 
   // Refs, weil die Bluetooth-Rueckrufe nur einmal angelegt werden
   const sessionRef = useRef<Session | null>(null)
@@ -48,6 +49,17 @@ export default function App() {
   const worker = useRef<Worker | null>(null)
   const wakeLock = useRef<WakeLockSentinel | null>(null)
   const autoVerbinden = useRef(false)   // nach Trennung selbst neu verbinden
+
+  // ---------- Akku-Protokoll ----------
+  const akkuMerken = (e: Omit<AkkuEintrag, 'zeit'>) => {
+    void speicher.akku({ zeit: Date.now(), ...e })
+    if (e.typ === 'mv') setAkkuLog(l => ({ n: l.n + 1, seit: l.seit ?? Date.now() }))
+  }
+  const akkuLogLaden = async () => {
+    const log = (await speicher.akkuLog()).filter(e => e.typ === 'mv')
+    setAkkuLog({ n: log.length, seit: log[0]?.zeit ?? null })
+  }
+  useEffect(() => { void akkuLogLaden() }, [])
 
   const aendere = (id: string, patch: Partial<Wurf>) => {
     wuerfeRef.current = wuerfeRef.current.map(w => (w.id === id ? { ...w, ...patch } : w))
@@ -126,17 +138,17 @@ export default function App() {
       setVerbindung('verbinde')
       if (!frisbee.current) {
         frisbee.current = new Frisbee({
-          zustand: setZustand,
+          zustand: z => { setZustand(z); if (z === 'schlaf') akkuMerken({ typ: 'schlaf' }) },
           ereignis: beiEreignis,
           wurfKomplett: beiWurfKomplett,
-          getrennt: () => { setVerbindung('getrennt'); wiederVerbinden() },
-          akku: setAkkuMv,
+          getrennt: () => { setVerbindung('getrennt'); akkuMerken({ typ: 'getrennt' }); wiederVerbinden() },
+          akku: mv => { setAkkuMv(mv); if (mv > 2500) akkuMerken({ typ: 'mv', mv }) },
         })
         await frisbee.current.verbinden()
       } else {
         await frisbee.current.neuVerbinden()
       }
-      setVerbindung('an')
+      setVerbindung('an'); akkuMerken({ typ: 'verbunden' })
       autoVerbinden.current = true
       whisperLaden()
     } catch (err) {
@@ -153,7 +165,7 @@ export default function App() {
       try {
         setVerbindung('verbinde')
         await frisbee.current.neuVerbinden()
-        setVerbindung('an')
+        setVerbindung('an'); akkuMerken({ typ: 'verbunden' })
       } catch {
         setVerbindung('getrennt')
         wiederVerbinden()
@@ -256,6 +268,19 @@ export default function App() {
           {verbindung === 'an' && (
             <button className="gross gefahr" onClick={ausschalten}>Frisbee ausschalten</button>
           )}
+          <section className="alte">
+            <h2>Akku-Protokoll</h2>
+            <ul><li>
+              <span>
+                {akkuLog.n} Messwerte
+                {akkuLog.seit && <> seit {new Date(akkuLog.seit).toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' })}</>}
+              </span>
+              <button onClick={() => void akkuExportieren()} disabled={!akkuLog.n}>Export</button>
+              <button className="klein" title="Neu beginnen (z. B. nach dem Vollladen)" onClick={async () => {
+                if (confirm('Akku-Protokoll löschen und neu beginnen?')) { await speicher.akkuLoeschen(); await akkuLogLaden() }
+              }}>🗑</button>
+            </li></ul>
+          </section>
           {alte.length > 0 && (
             <section className="alte">
               <h2>Frühere Sessions</h2>
