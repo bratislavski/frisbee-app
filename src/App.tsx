@@ -20,9 +20,10 @@ type WhisperStatus = { typ: 'aus' } | { typ: 'laedt'; prozent: number } | { typ:
 
 const neueId = () => crypto.randomUUID()
 
-// Ungefaehre Ladung eines LiPo-Akkus aus der Spannung (ohne Last)
+// Ladung aus der Spannung, wie das Board sie misst (liest ca. 3 % zu niedrig).
+// Gemessen beim Entlade-Test 12./13.11.2026: voll 4060 mV, nach 14,2 h bei 3400 mV leer (Board schlaeft).
 function akkuProzent(mv: number): number {
-  const kurve: [number, number][] = [[3300, 0], [3500, 5], [3650, 20], [3750, 40], [3850, 60], [4000, 80], [4150, 100]]
+  const kurve: [number, number][] = [[3400, 0], [3450, 6], [3500, 12], [3600, 23], [3650, 37], [3700, 55], [3800, 71], [3900, 85], [4000, 95], [4060, 100]]
   if (mv <= kurve[0][0]) return 0
   for (let i = 1; i < kurve.length; i++) {
     const [v1, p1] = kurve[i - 1], [v2, p2] = kurve[i]
